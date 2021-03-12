@@ -1,0 +1,108 @@
+# Golang CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-go/ for more details
+version: 2.1
+
+executors:
+  build:
+    parameters:
+      go-version:
+        type: string
+    docker:
+      - image: circleci/golang:<< parameters.go-version >>
+        environment:
+          GO111MODULE: "on"
+    working_directory: /go/src/github.com/smith-30/ari
+
+commands:
+  go_mod_download:
+    steps:
+      - restore_cache:
+          name: Restore go modules cache
+          keys:
+            - mod-{{ .Environment.COMMON_CACHE_KEY }}-{{ checksum "go.mod" }}
+      - run: make build
+      - save_cache:
+          name: Save go modules cache
+          key: mod-{{ .Environment.COMMON_CACHE_KEY }}-{{ checksum "go.mod" }}
+          paths:
+            - "/go/pkg/mod"
+  linting:
+    steps:
+      - restore_cache:
+          name: Restore go modules cache
+          keys:
+            - mod-{{ .Environment.COMMON_CACHE_KEY }}-{{ checksum "go.mod" }}
+      - run: make fmt-diff
+      - run: make vet
+      - run: make install-lint
+      - run: make lint
+      - save_cache:
+          name: Save go modules cache
+          key: mod-{{ .Environment.COMMON_CACHE_KEY }}-{{ checksum "go.mod" }}
+          paths:
+            - "/go/pkg/mod"
+  test:
+    steps:
+      - restore_cache:
+          name: Restore go modules cache
+          keys:
+            - mod-{{ .Environment.COMMON_CACHE_KEY }}-{{ checksum "go.mod" }}
+
+      - run: make test
+
+      - save_cache:
+          name: Save go modules cache
+          key: mod-{{ .Environment.COMMON_CACHE_KEY }}-{{ checksum "go.mod" }}
+          paths:
+            - "/go/pkg/mod"
+
+jobs:
+  build:
+    parameters:
+      go-version:
+        type: string
+    executor:
+      name: build
+      go-version: << parameters.go-version >>
+
+    steps:
+      - checkout
+      - go_mod_download
+
+  lint:
+    parameters:
+      go-version:
+        type: string
+    executor:
+      name: build
+      go-version: << parameters.go-version >>
+
+    steps:
+      - checkout
+      - linting
+
+  test:
+    parameters:
+      go-version:
+        type: string
+    executor:
+      name: build
+      go-version: << parameters.go-version >>
+    steps:
+      - checkout
+      - test
+
+workflows:
+  golang-workflow:
+    jobs:
+      - build:
+          go-version: "1.13"
+      - lint:
+          go-version: "1.13"
+          requires:
+            - build
+      - test:
+          go-version: "1.13"
+          requires:
+            - build
