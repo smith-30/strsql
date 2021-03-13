@@ -4,7 +4,7 @@ GOARCH=$(shell go env GOARCH)
 
 # if tag doesnt exists, show revision
 VERSION=$(shell git describe --tags --abbrev=7 --always)
-# REVISION=$(shell git rev-parse --short HEAD)
+REVISION=$(shell git rev-parse --short HEAD)
 
 ifeq ($(VERSION),$(REVISION))
 VERSION=v0.0.0
